@@ -1,1 +1,409 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from datetime import datetime
+import json
+import pandas as pd
 
+
+# Base class for products
+class AllProducts:
+    def __init__(self, name, price):
+        self.name = name
+        self.price = price
+
+    def get_name(self):
+        return self.name
+
+    def get_price(self):
+        return self.price
+
+
+# Subclasses for different categories
+class Sarees(AllProducts):
+    def __init__(self, name, price, fabric_type):
+        super().__init__(name, price)
+        self.fabric_type = fabric_type
+
+    def get_fabric_type(self):
+        return self.fabric_type
+
+
+class SherwaniSuits(AllProducts):
+    def __init__(self, name, price, colour):
+        super().__init__(name, price)
+        self.color = colour
+
+    def get_colour(self):
+        return self.colour
+
+
+class PathaniKurtas(AllProducts):
+    def __init__(self, name, price, design):
+        super().__init__(name, price)
+        self.material = design
+
+    def get_design(self):
+        return self.design
+
+
+class Jewellery(AllProducts):
+    def __init__(self, name, price, metal_type):
+        super().__init__(name, price)
+        self.metal_type= metal_type
+
+    def get_metal_type(self):
+        return self.metal_type
+
+
+# Global dictionary to store product information
+all_product_info = {
+    'Sarees': {
+        '1': Sarees('Pink Net Saree', 100, 'Net'),
+        '2': Sarees('Red Net Saree', 100, 'Net'),
+        '3': Sarees('Red and Copper Bridal Sharara', 400, 'Silk'),
+        '4': Sarees('Magenta and Gold Bridal Sharara', 500, 'Silk'),
+        '5': Sarees('Green Silk Saree', 150, 'Silk'),
+        '6': Sarees('Blue Georgette Saree', 120, 'Georgette'),
+        '7': Sarees('Purple Banarasi Saree', 180, 'Banarasi'),
+        '8': Sarees('Yellow Chiffon Saree', 130, 'Chiffon')
+    },
+    'Sherwani Suits': {
+        '9': SherwaniSuits('Men Cream & Gold Sherwani', 250, 'Cream & Gold'),
+        '10': SherwaniSuits('Men Black & Gold Sherwani', 250, 'Black & Gold'),
+        '11': SherwaniSuits('Men Blue & Silver Sherwani', 280, 'Blue & Silver'),
+        '12': SherwaniSuits('Men Red Velvet Sherwani', 300, 'Red Velvet'),
+        '13': SherwaniSuits('Men Green Embroidered Sherwani', 270, 'Green Embroidered'),
+        '14': SherwaniSuits('Men Maroon Silk Sherwani', 320, 'Maroon Silk')
+    },
+    'Pathani Kurtas': {
+        '15': PathaniKurtas('Men White Kurta', 50, 'White'),
+        '16': PathaniKurtas('Men Blue Linen Kurta', 70, 'Blue Linen'),
+        '17': PathaniKurtas('Men Black Silk Kurta', 90, 'Black Silk'),
+        '18': PathaniKurtas('Men Maroon Cotton Kurta', 60, 'Maroon Cotton'),
+        '19': PathaniKurtas('Men Pink Embroidered Kurta', 80, 'Pink Embroidered'),
+        '20': PathaniKurtas('Men Orange Cotton Kurta', 65, 'Orange Cotton')
+    },
+    'Jewellery': {
+        '21': Jewellery('Gold Necklace Set', 300, 'Gold'),
+        '22': Jewellery('Silver Jhumkas', 50, 'Silver'),
+        '23': Jewellery('Pearl Bracelet', 80, 'Pearl'),
+        '24': Jewellery('Diamond Ring', 500, 'Diamond'),
+        '25': Jewellery('Ruby Earrings', 120, 'Ruby'),
+        '26': Jewellery('Emerald Pendant', 200, 'Emerald')
+    }
+}
+
+# Global list to store individual purchases
+purchases = []
+
+
+# Function to validate date format
+def validate_date(date_text):
+    try:
+        datetime.strptime(date_text, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
+
+# Function to update product dropdown based on selected category
+def update_product_dropdown(event):
+    category = category_var.get()
+    if category in all_product_info:
+        product_optionmenu['menu'].delete(0, 'end')
+        for key in all_product_info[category]:
+            product_optionmenu['menu'].add_command(
+                label=f"{key}: {all_product_info[category][key].get_name()} - ${all_product_info[category][key].get_price():.2f}",
+                command=tk._setit(product_var,
+                                  f"{key}: {all_product_info[category][key].get_name()} - ${all_product_info[category][key].get_price():.2f}"))
+
+
+# Function to add item to cart
+def add_to_cart():
+    customer_name = customer_name_var.get()
+    purchase_date = purchase_date_var.get()
+    shipping_option = shipping_option_var.get()
+
+    product_info = product_var.get()
+    if product_info == "":
+        messagebox.showerror('Error', 'Please select a product')
+        return
+
+    # Extract product_id from the selected product info
+    product_id = product_info.split(':')[0].strip()
+
+    if product_id not in all_product_info[category_var.get()]:
+        messagebox.showerror('Error', 'Invalid Product ID')
+        return
+
+    quantity = int(quantity_spinbox.get())
+    payment_method = payment_method_var.get()
+
+    if payment_method == "":
+        messagebox.showerror('Error', 'Please select a payment method')
+        return
+
+    if customer_name == "":
+        messagebox.showerror('Error', 'Please enter customer name')
+        return
+
+    if not validate_date(purchase_date):
+        messagebox.showerror('Error', 'Invalid Date Format. Please use YYYY-MM-DD.')
+        return
+
+    # Calculate item price including FedEx delivery charge if selected
+    item_price = all_product_info[category_var.get()][product_id].get_price()
+    if shipping_option == "FedEx Delivery ($20)":
+        item_price += 20
+
+    # Create a new cart for the customer if it doesn't exist
+    customer_cart = {
+        'customer_name': customer_name,
+        'purchase_date': purchase_date,
+        'shipping_option': shipping_option,
+        'payment_method': payment_method,
+        'items': []
+    }
+
+    # Add item to the customer's cart
+    customer_cart['items'].append({
+        'name': all_product_info[category_var.get()][product_id].get_name(),
+        'price': item_price,
+        'quantity': quantity
+    })
+
+    # Add customer cart to purchases list
+    purchases.append(customer_cart)
+
+    messagebox.showinfo('Success', f"{quantity} {all_product_info[category_var.get()][product_id].get_name()} added to cart.")
+
+
+# Function to display all carts
+def display_carts():
+    if not purchases:
+        messagebox.showinfo('No Purchases', 'No purchases made yet.')
+        return
+
+    for idx, purchase in enumerate(purchases, start=1):
+        cart_summary = f"Purchase #{idx}:\n"
+        cart_summary += f"Purchased by: {purchase['customer_name']}\n"
+        cart_summary += f"Date of Purchase: {purchase['purchase_date']}\n"
+        cart_summary += f"Shipping Option: {purchase['shipping_option']}\n"
+        cart_summary += f"Payment Method: {purchase['payment_method']}\n\n"
+
+        total_amount = 0
+        for item in purchase['items']:
+            item_total = item['price'] * item['quantity']
+            total_amount += item_total
+            cart_summary += f"{item['name']} x {item['quantity']} - ${item_total:.2f}\n"
+        cart_summary += f"\nTotal Amount: ${total_amount:.2f}"
+
+        messagebox.showinfo(f'Cart #{idx}', cart_summary)
+
+
+# Function to display pie chart of all purchases
+def display_pie_chart():
+    if not purchases:
+        messagebox.showinfo('No Purchases', 'No purchases made yet.')
+        return
+
+    # Calculate total sales for each product
+    sales_data = {}
+    for purchase in purchases:
+        for item in purchase['items']:
+            product_name = item['name']
+            if product_name in sales_data:
+                sales_data[product_name] += item['price'] * item['quantity']
+            else:
+                sales_data[product_name] = item['price'] * item['quantity']
+
+    # Prepare data for pie chart
+    labels = list(sales_data.keys())
+    values = list(sales_data.values())
+
+    # Plot pie chart
+    fig, ax = plt.subplots()
+    ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    ax.set_title('Sales Distribution by Product')
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    # Create a new frame for the chart
+    chart_frame = tk.Frame(root)
+    chart_frame.grid(row=0, column=3, columnspan=3, rowspan=6, padx=10, pady=10)
+
+    # Embedding the plot into tkinter window
+    chart_canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+    chart_canvas.draw()
+    chart_canvas.get_tk_widget().pack()
+
+
+# Function to display bar chart of payment methods
+def display_payment_method_chart():
+    if not purchases:
+        messagebox.showinfo('No Purchases', 'No purchases made yet.')
+        return
+
+    # Count number of purchases made by each payment method
+    payment_counts = {'Cash': 0, 'Credit Card': 0}
+    for purchase in purchases:
+        payment_method = purchase['payment_method']
+        if payment_method in payment_counts:
+            payment_counts[payment_method] += 1
+        else:
+            payment_counts[payment_method] = 1
+
+    labels = list(payment_counts.keys())
+    counts = list(payment_counts.values())
+
+    fig, ax = plt.subplots()
+    ax.bar(labels, counts, align='center')
+    ax.set_xlabel('Payment Method')
+    ax.set_ylabel('Number of Purchases')
+    ax.set_title('Payment Method Distribution')
+    fig.set_figheight(4)
+
+
+    # Create a new frame for the chart
+    chart_frame = tk.Frame(root)
+    chart_frame.grid(row=6, column=2, columnspan=2, rowspan=6, padx=10, pady=10)
+
+    # Embedding the plot into tkinter window
+    chart_canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+    chart_canvas.draw()
+    chart_canvas.get_tk_widget().pack()
+
+
+# Function to save purchases to a JSON file
+def save_purchases_to_json():
+    with open('purchases.json', 'w') as file:
+        json.dump(purchases, file, indent=4,  default=str)
+    messagebox.showinfo('Save', 'Purchases saved to purchases.json')
+
+
+# Function to load purchases from a JSON file
+def load_purchases_from_json():
+    global purchases
+    try:
+        with open('purchases.json', 'r') as file:
+            purchases = json.load(file)
+        messagebox.showinfo('Load', 'Purchases loaded from purchases.json')
+    except FileNotFoundError:
+        messagebox.showerror('Error', 'No saved purchases found.')
+
+
+# Function to create and display a histogram of total sales by product
+def display_sales_histogram():
+    if not purchases:
+        messagebox.showinfo('No Purchases', 'No purchases made yet.')
+        return
+
+    # Calculate total sales for each product
+    sales_data = {}
+    for purchase in purchases:
+        for item in purchase['items']:
+            product_name = item['name']
+            if product_name in sales_data:
+                sales_data[product_name] += item['price'] * item['quantity']
+            else:
+                sales_data[product_name] = item['price'] * item['quantity']
+
+    # Convert sales data to a pandas DataFrame
+    df_sales = pd.DataFrame(list(sales_data.items()), columns=['Product', 'Total Sales'])
+
+    # Plot histogram
+    fig, ax = plt.subplots(figsize=(6,4))
+    ax.hist(df_sales['Total Sales'], bins=10, edgecolor='Magenta')
+    ax.set_xlabel('Total Sales')
+    ax.set_ylabel('Number of Products')
+    ax.set_title('Histogram of Total Sales by Product')
+
+    # Create a new frame for the chart
+    chart_frame = tk.Frame(root)
+    chart_frame.grid(row=6, column=4, columnspan=2, rowspan=6, padx=10, pady=10)
+
+    # Embedding the plot into tkinter window
+    chart_canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+    chart_canvas.draw()
+    chart_canvas.get_tk_widget().pack()
+
+
+# Main tkinter window
+root = tk.Tk()
+root.state('zoomed')
+root.title('Digital Indian Store Boutique Shopping App')
+
+# Label and Entry for customer name
+tk.Label(root, text='Customer Name:').grid(row=0, column=0, padx=10, pady=5)
+customer_name_var = tk.StringVar()
+customer_name_entry = tk.Entry(root, textvariable=customer_name_var)
+customer_name_entry.grid(row=0, column=1, padx=10, pady=5)
+
+# Label and Entry for date of purchase
+tk.Label(root, text='Date of Purchase:').grid(row=1, column=0, padx=10, pady=5)
+purchase_date_var = tk.StringVar()
+purchase_date_var.set(datetime.now().strftime('%Y-%m-%d'))  # Default to today's date
+purchase_date_entry = tk.Entry(root, textvariable=purchase_date_var)
+purchase_date_entry.grid(row=1, column=1, padx=10, pady=5)
+
+# Dropdown menu (OptionMenu) for category selection
+tk.Label(root, text='Select Category:').grid(row=2, column=0, padx=10, pady=5)
+category_var = tk.StringVar()
+category_var.set('')  # Default selection
+category_optionmenu = ttk.OptionMenu(root, category_var, '', *all_product_info.keys(), command=update_product_dropdown)
+category_optionmenu.grid(row=2, column=1, padx=10, pady=10)
+# Dropdown menu (OptionMenu) for product selection
+tk.Label(root, text='Select Product:').grid(row=3, column=0, padx=10, pady=5)
+product_var = tk.StringVar()
+product_optionmenu = ttk.OptionMenu(root, product_var, '')
+product_optionmenu.grid(row=3, column=1, padx=10, pady=10)
+
+# Spinbox for quantity selection
+tk.Label(root, text='Quantity:').grid(row=4, column=0, padx=10, pady=5)
+quantity_spinbox = tk.Spinbox(root, from_=1, to=10, width=10)
+quantity_spinbox.grid(row=4, column=1, padx=10, pady=5)
+
+# Radio buttons for shipping options
+shipping_option_var = tk.StringVar()
+shipping_option_var.set("In-store Pickup")  # Default selection
+tk.Label(root, text="Shipping Option:").grid(row=5, column=0, padx=10, pady=5)
+tk.Radiobutton(root, text="In-store Pickup", variable=shipping_option_var, value="In-store Pickup").grid(row=5, column=1, padx=10, pady=5)
+tk.Radiobutton(root, text="Delivery ($20)", variable=shipping_option_var, value="FedEx Delivery ($20)").grid(row=6, column=1, padx=10, pady=5)
+
+# Dropdown menu (OptionMenu) for payment method selection
+tk.Label(root, text='Payment Method:').grid(row=7, column=0, padx=10, pady=5)
+payment_method_var = tk.StringVar()
+payment_method_optionmenu = ttk.OptionMenu(root, payment_method_var, '', 'Cash', 'Credit Card')
+payment_method_optionmenu.grid(row=7, column=1, padx=10, pady=10)
+
+# Buttons for actions
+btn_add_to_cart = tk.Button(root, text='Add to Cart', command=add_to_cart)
+btn_add_to_cart.grid(row=8, column=0, columnspan=2, pady=10)
+
+btn_display_carts = tk.Button(root, text='Display Carts', command=display_carts)
+btn_display_carts.grid(row=9, column=0, columnspan=2, pady=10)
+
+btn_display_pie_chart = tk.Button(root, text='Display Pie Chart', command=display_pie_chart)
+btn_display_pie_chart.grid(row=10, column=0, columnspan=2, pady=10)
+
+btn_display_payment_method_chart = tk.Button(root, text='Display Payment Method Chart',
+                                             command=display_payment_method_chart)
+btn_display_payment_method_chart.grid(row=11, column=0, columnspan=2, pady=10)
+
+btn_save_to_json = tk.Button(root, text='Save Purchases to JSON', command=save_purchases_to_json)
+btn_save_to_json.grid(row=12, column=0, columnspan=2, pady=10)
+
+btn_load_from_json = tk.Button(root, text='Load Purchases from JSON', command=load_purchases_from_json)
+btn_load_from_json.grid(row=13, column=0, columnspan=2, pady=10)
+
+btn_display_sales_histogram = tk.Button(root, text='Display Sales Histogram', command=display_sales_histogram)
+btn_display_sales_histogram.grid(row=14, column=0, columnspan=2, pady=10)
+
+messagebox.showinfo('Welcome', 'Hello, welcome to my digital store.')
+messagebox.showinfo('Welcome', 'Select item, add to cart with specified quantities, choose shipping & payment options.')
+messagebox.showinfo('Instructions', 'Use dropdowns to select category/product, adjust quantity using the spinbox.')
+
+
+root.mainloop()
