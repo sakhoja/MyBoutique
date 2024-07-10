@@ -1,5 +1,14 @@
 # MyBoutique
-Python
+Software Requirements:
+1.	Python: Ensure Python is installed on your system. The code is written in Python 3.x.
+o	You can download Python from python.org.
+2.	Required Python Libraries:
+o	Ensure the following libraries are installed:
+	tkinter: Used for the GUI components.
+	matplotlib: Used for creating charts and graphs.
+	pandas: Used for data manipulation and analysis.
+	 Install required libraries (tkinter, matplotlib, and pandas) using pip.
+
 Detailed Project Description:-
 The Digital Indian Store Boutique Shopping App is a Python application built using the tkinter library for GUI, matplotlib for data visualization, and pandas for data analysis. The application simulates a boutique shopping experience where customers can browse through different categories of products such as Sarees, Sherwani Suits, Pathani Kurtas, and Jewellery. They can add items to their cart, specify quantities, choose shipping options, and select payment methods. 
 Programming Concepts Implemented:-
